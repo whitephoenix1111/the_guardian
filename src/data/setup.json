@@ -1,0 +1,45 @@
+{
+  "equity": 10000,
+  "instruments": {
+    "EUR/USD": {
+      "maxRiskPercent": 1,
+      "checklist": [
+        {
+          "id": "1",
+          "label": "Trend is confirmed on H4",
+          "type": "checkbox"
+        },
+        {
+          "id": "2",
+          "label": "Key level identified",
+          "type": "checkbox"
+        },
+        {
+          "id": "3",
+          "label": "No major news in next 4 hours",
+          "type": "checkbox"
+        }
+      ]
+    },
+    "XAU/USD": {
+      "maxRiskPercent": 0.5,
+      "checklist": [
+        {
+          "id": "1",
+          "label": "DXY direction confirmed",
+          "type": "checkbox"
+        },
+        {
+          "id": "2",
+          "label": "Asia/London session overlap",
+          "type": "checkbox"
+        },
+        {
+          "id": "3",
+          "label": "ATR within normal range",
+          "type": "checkbox"
+        }
+      ]
+    }
+  }
+}

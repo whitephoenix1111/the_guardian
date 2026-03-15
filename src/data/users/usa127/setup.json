@@ -1,0 +1,9 @@
+{
+  "equity": 10000,
+  "instruments": {
+    "USD/JPY": {
+      "maxRiskPercent": 1,
+      "checklist": []
+    }
+  }
+}
