@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   const username = getUsername(req);
   if (!username) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const plans = readUserJSON<Plan[]>(username, "plans.json");
+  const plans = await readUserJSON<Plan[]>(username, "plans.json");
   return NextResponse.json(plans);
 }
 
@@ -25,8 +25,8 @@ export async function POST(req: NextRequest) {
   if (!username) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const plans = readUserJSON<Plan[]>(username, "plans.json");
+  const plans = await readUserJSON<Plan[]>(username, "plans.json");
   plans.unshift(body);
-  writeUserJSON(username, "plans.json", plans);
+  await writeUserJSON(username, "plans.json", plans);
   return NextResponse.json({ ok: true });
 }

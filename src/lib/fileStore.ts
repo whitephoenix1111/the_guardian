@@ -1,46 +1,61 @@
-import fs from 'fs';
-import path from 'path';
+/**
+ * fileStore.ts — Redis-backed storage (Upstash)
+ *
+ * Thay thế hoàn toàn fs-based implementation để tương thích Vercel serverless.
+ * Interface giữ nguyên, chỉ thêm async cho các hàm per-user.
+ *
+ * Key convention:
+ *   user:{username}:setup   → SetupJSON string
+ *   user:{username}:plans   → PlansJSON string
+ */
 
-const DATA_DIR = path.join(process.cwd(), 'src/data');
+import redis from "@/lib/redis";
 
-// ─── Global (dùng cho users.json, default templates) ───────────────────────
+// ─── users.json — static, bundle lúc build (read-only là OK) ───────────────
+// Import trực tiếp, không cần Redis. Chỉ dùng để đọc danh sách tài khoản.
+import usersData from "@/data/users.json";
 
 export function readJSON<T>(filename: string): T {
-  const filePath = path.join(DATA_DIR, filename);
-  const raw = fs.readFileSync(filePath, 'utf-8');
-  return JSON.parse(raw) as T;
-}
-
-export function writeJSON<T>(filename: string, data: T): void {
-  const filePath = path.join(DATA_DIR, filename);
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
-}
-
-// ─── Per-user (setup.json, plans.json riêng mỗi user) ──────────────────────
-
-function userDir(username: string): string {
-  return path.join(DATA_DIR, 'users', username);
-}
-
-function ensureUserDir(username: string): void {
-  const dir = userDir(username);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  if (filename === "users.json") {
+    return usersData as unknown as T;
   }
+  throw new Error(`readJSON: file "${filename}" không được hỗ trợ qua Redis store.`);
 }
 
-export function readUserJSON<T>(username: string, filename: string): T {
-  const filePath = path.join(userDir(username), filename);
-  const raw = fs.readFileSync(filePath, 'utf-8');
-  return JSON.parse(raw) as T;
+// ─── Per-user helpers ───────────────────────────────────────────────────────
+
+function setupKey(username: string) {
+  return `user:${username}:setup`;
 }
 
-export function writeUserJSON<T>(username: string, filename: string, data: T): void {
-  ensureUserDir(username);
-  const filePath = path.join(userDir(username), filename);
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+function plansKey(username: string) {
+  return `user:${username}:plans`;
 }
 
-export function userFileExists(username: string, filename: string): boolean {
-  return fs.existsSync(path.join(userDir(username), filename));
+function keyFor(username: string, filename: string): string {
+  if (filename === "setup.json") return setupKey(username);
+  if (filename === "plans.json") return plansKey(username);
+  throw new Error(`keyFor: unknown filename "${filename}"`);
+}
+
+// ─── Public API (async) ─────────────────────────────────────────────────────
+
+export async function readUserJSON<T>(username: string, filename: string): Promise<T> {
+  const key = keyFor(username, filename);
+  const value = await redis.get<T>(key);
+  if (value === null) {
+    throw new Error(`readUserJSON: key "${key}" không tồn tại trong Redis.`);
+  }
+  return value;
+}
+
+export async function writeUserJSON<T>(username: string, filename: string, data: T): Promise<void> {
+  const key = keyFor(username, filename);
+  await redis.set(key, JSON.stringify(data));
+}
+
+export async function userFileExists(username: string, filename: string): Promise<boolean> {
+  const key = keyFor(username, filename);
+  const exists = await redis.exists(key);
+  return exists === 1;
 }

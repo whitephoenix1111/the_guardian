@@ -62,8 +62,7 @@ export async function GET(req: NextRequest) {
   const username = getUsername(req);
   if (!username) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const raw = readUserJSON<SetupLegacy | Setup>(username, "setup.json");
-  // Auto-migrate schema cũ khi đọc
+  const raw = await readUserJSON<SetupLegacy | Setup>(username, "setup.json");
   const setup = migrateLegacySetup(raw as SetupLegacy | Setup);
   return NextResponse.json(setup);
 }
@@ -73,6 +72,6 @@ export async function PUT(req: NextRequest) {
   if (!username) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  writeUserJSON(username, "setup.json", body);
+  await writeUserJSON(username, "setup.json", body);
   return NextResponse.json({ ok: true });
 }

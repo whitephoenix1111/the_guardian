@@ -13,12 +13,12 @@ const DEFAULT_SETUP = {
 
 const DEFAULT_PLANS: never[] = [];
 
-function initUserDataIfNeeded(username: string): void {
-  if (!userFileExists(username, "setup.json")) {
-    writeUserJSON(username, "setup.json", DEFAULT_SETUP);
+async function initUserDataIfNeeded(username: string): Promise<void> {
+  if (!(await userFileExists(username, "setup.json"))) {
+    await writeUserJSON(username, "setup.json", DEFAULT_SETUP);
   }
-  if (!userFileExists(username, "plans.json")) {
-    writeUserJSON(username, "plans.json", DEFAULT_PLANS);
+  if (!(await userFileExists(username, "plans.json"))) {
+    await writeUserJSON(username, "plans.json", DEFAULT_PLANS);
   }
 }
 
@@ -37,8 +37,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // Tạo data riêng cho user nếu chưa có
-  initUserDataIfNeeded(match.username);
+  await initUserDataIfNeeded(match.username);
 
   const res = NextResponse.json({ ok: true });
   res.cookies.set("tg_session", match.username, {

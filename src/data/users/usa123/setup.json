@@ -27,28 +27,6 @@
           "maxUsd": 10
         },
         {
-          "id": "AUD/USD-1773637810634",
-          "name": "Trade thường phiên Âu",
-          "maxRiskPercent": 1,
-          "items": [
-            {
-              "label": "Đã 15h chưa mà đòi trade?",
-              "type": "checkbox",
-              "id": "1773637862803"
-            },
-            {
-              "label": "Nếu giá AU quét qua đỉnh phiên Á rồi nhanh chóng rút chân lại, sẽ đánh ngược về vùng giá trung tâm (Mean Reversion).",
-              "type": "select",
-              "options": [
-                "Chưa quét qua đỉnh phiên Á.",
-                "Đã quét đỉnh phiên Á."
-              ],
-              "id": "1773637926948"
-            }
-          ],
-          "maxUsd": 10
-        },
-        {
           "id": "AUD/USD-1773637952461",
           "name": "Trade tin sáng.",
           "maxRiskPercent": 0.1,
@@ -89,7 +67,14 @@
     },
     "EUR/USD": {
       "id": "EUR/USD",
-      "checklists": []
+      "checklists": [
+        {
+          "id": "EUR/USD-1773660802880",
+          "name": "Trade thường phiên Âu",
+          "maxUsd": 100,
+          "items": []
+        }
+      ]
     }
   }
 }
