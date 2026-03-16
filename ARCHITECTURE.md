@@ -12,40 +12,137 @@ Người dùng phải đi qua 6 Gate theo thứ tự. Không pass Gate trước 
 | Next.js | 16.1.6 | Framework + App Router |
 | Tailwind CSS | v4 | Style (theme: Black & Lime) |
 | Zustand | 5.x | State machine quản lý gates |
-| JSON file | — | Lưu trữ data (setup, plans) — giai đoạn hiện tại |
+| JSON file | — | Lưu trữ data (per-user) |
 | TypeScript | 5.x | Type safety |
 | Be Vietnam Pro | — | Font chính, hỗ trợ tiếng Việt |
 
-**Hiện tại không dùng:** Database, Prisma, Zod, ORM.  
-**Roadmap auth:** sẽ thêm database khi chuyển sang multi-user (xem phần Mở rộng).
+**Hiện tại không dùng:** Database, Prisma, Zod, ORM.
+**Roadmap auth:** sẽ thêm database khi chuyển sang multi-user thật sự (xem phần Mở rộng).
 
 ---
 
-## Data Layer (hiện tại — single-user, local JSON)
+## Data Layer (single-user per folder, local JSON)
 
-Toàn bộ dữ liệu lưu trong `/src/data/`:
+Mỗi user có thư mục riêng trong `/src/data/users/<username>/`:
 
 ```
 /src/data/
-  setup.json     # Cấu hình instruments, checklist, equity
-  plans.json     # Lịch sử các TradePlan đã tạo
+  users.json               # Danh sách tài khoản (global)
+  users/
+    <username>/
+      setup.json           # Cấu hình instruments + checklists của user đó
+      plans.json           # Lịch sử TradePlan của user đó
 ```
 
 Đọc/ghi qua **Next.js Route Handlers** (`/api/...`) dùng `fs` module của Node.
+Username được inject bởi `middleware.ts` vào header `x-username` sau khi xác thực cookie.
 
-### Cấu trúc setup.json
+---
+
+## Schema Data (target)
+
+### Quan hệ giữa các thực thể
+
+```
+users
+├── id (PK)
+├── username (UK)
+├── password
+└── created_at
+     │
+     ├──1────────1── user_settings
+     │               ├── id (PK)
+     │               ├── user_id (FK)
+     │               ├── equity
+     │               └── updated_at
+     │
+     └──1────────∞── instruments
+                     ├── id (PK)
+                     ├── user_id (FK)
+                     ├── name
+                     └── created_at
+                          │
+                          └──1────────∞── checklists
+                                          ├── id (PK)
+                                          ├── instrument_id (FK)
+                                          ├── name              ← "Trade thường", "Trade tin"...
+                                          ├── max_risk_percent  ← mỗi checklist có ngưỡng riêng
+                                          └── created_at
+                                               │
+                                               ├──1────────∞── checklist_items
+                                               │               ├── id (PK)
+                                               │               ├── checklist_id (FK)
+                                               │               ├── label
+                                               │               ├── type
+                                               │               ├── operator
+                                               │               ├── threshold
+                                               │               ├── options
+                                               │               └── sort_order
+                                               │
+                                               └──1────────∞── plans
+                                                               ├── id (PK)
+                                                               ├── checklist_id (FK)
+                                                               ├── status
+                                                               └── created_at
+                                                                    │
+                                                                    ├──1────1── plan_details
+                                                                    │           ├── id (PK)
+                                                                    │           ├── plan_id (FK)
+                                                                    │           ├── narrative
+                                                                    │           ├── pre_mortem
+                                                                    │           ├── entry
+                                                                    │           ├── stop
+                                                                    │           ├── equity_snapshot
+                                                                    │           └── risk_percent
+                                                                    │
+                                                                    └──1────∞── plan_checklist_snapshot
+                                                                                ├── id (PK)
+                                                                                ├── plan_id (FK)
+                                                                                ├── item_label
+                                                                                ├── item_type
+                                                                                └── value
+```
+
+### Ghi chú thiết kế
+
+- **1 user → nhiều instrument**: mỗi instrument thuộc về đúng 1 user.
+- **1 instrument → nhiều checklist**: ví dụ EUR/USD có "Trade thường" và "Trade tin", mỗi cái là bộ luật riêng với `max_risk_percent` riêng.
+- **1 checklist → nhiều checklist_item**: các rule cụ thể trong bộ đó.
+- **1 plan → gắn với 1 checklist cụ thể**: plan là log ghi lại trade hôm đó theo bộ luật nào.
+- **`plan_checklist_snapshot`**: snapshot toàn bộ câu trả lời checklist tại thời điểm lưu plan — tránh mất dữ liệu khi rule bị sửa sau này.
+- **`plan_details`**: tách riêng để query danh sách log không cần kéo narrative dài.
+- **`plans` chỉ chứa `checklist_id`**: không cần `instrument_id` hay `user_id` riêng vì đã traverse được qua `checklist → instrument → user`.
+
+### Cấu trúc setup.json (target — per user)
 
 ```ts
 {
-  equity: number                              // Vốn tài khoản dùng chung (Gate 3)
-  instruments: Record<string, {
-    maxRiskPercent: number                    // Ngưỡng risk tối đa Gate 3
-    checklist: ChecklistItem[]               // Danh sách rule Gate 2
+  equity: number
+  instruments: Record<string, {           // key = instrument name, VD: "EUR/USD"
+    id: string
+    checklists: Array<{
+      id: string
+      name: string                        // "Trade thường", "Trade tin"...
+      maxRiskPercent: number
+      items: ChecklistItem[]
+    }>
   }>
 }
 ```
 
-### ChecklistItem — hỗ trợ 3 loại rule
+### Cấu trúc setup.json (hiện tại — cần migrate)
+
+```ts
+{
+  equity: number
+  instruments: Record<string, {
+    maxRiskPercent: number
+    checklist: ChecklistItem[]            // ← flat, chưa có multi-checklist
+  }>
+}
+```
+
+### ChecklistItem
 
 ```ts
 type ChecklistItemType = 'checkbox' | 'number' | 'select'
@@ -54,17 +151,11 @@ interface ChecklistItem {
   id: string
   label: string
   type: ChecklistItemType
-  operator?: '>=' | '<='       // chỉ dùng cho type 'number'
-  threshold?: number           // chỉ dùng cho type 'number'
-  options?: string[]           // chỉ dùng cho type 'select'
+  operator?: '>=' | '<='
+  threshold?: number
+  options?: string[]
 }
 ```
-
-| Type | UI Gate 2 | Pass khi |
-|---|---|---|
-| `checkbox` | Click để tick | `value === true` |
-| `number` | Input số | `value >= threshold` hoặc `<= threshold` (hoặc bất kỳ số nếu không có threshold) |
-| `select` | Dropdown | Đã chọn một option |
 
 ---
 
@@ -77,20 +168,20 @@ Store duy nhất quản lý toàn bộ flow:
   currentGate: number
   gateStatus: Record<number, 'locked' | 'in-progress' | 'done'>
   planData: {
-    instrument: string                 // Gate 0
-    narrative: string                  // Gate 1
-    checklist: (boolean|number|string)[] // Gate 2 — giá trị theo type
-    checklistItems: ChecklistItem[]    // Gate 2 — metadata rule
+    instrument: string                    // Gate 0 — tên instrument
+    checklistId: string                   // Gate 0 — id checklist được chọn (mới)
+    checklistName: string                 // Gate 0 — tên checklist để hiển thị (mới)
+    narrative: string                     // Gate 1
+    checklist: (boolean|number|string)[]  // Gate 2 — giá trị theo type
+    checklistItems: ChecklistItem[]       // Gate 2 — metadata rule
     risk: { entry, stop, equity, riskPercent } // Gate 3
-    preMortem: string                  // Gate 4
+    preMortem: string                     // Gate 4
   }
-  advance: () => void   // Chỉ chạy khi validation pass
-  goBack: () => void    // Quay về gate trước
-  reset: () => void     // Reset toàn bộ về gate 0
+  advance: () => void
+  goBack: () => void
+  reset: () => void
 }
 ```
-
-**Rule:** `advance()` chỉ chạy khi validation pass. Validation viết bằng JS thuần, không dùng Zod.
 
 ---
 
@@ -98,12 +189,23 @@ Store duy nhất quản lý toàn bộ flow:
 
 | Gate | Tên | Validation |
 |---|---|---|
-| 0 | Chọn Instrument | `instrument !== ''` (load checklist + maxRisk theo profile) |
+| 0 | Chọn Instrument + Checklist | `instrument !== ''` và `checklistId !== ''` |
 | 1 | Bối cảnh thị trường | `narrative.length >= 100` |
-| 2 | Checklist kỹ thuật | Mỗi item pass theo type của nó |
-| 3 | Tính toán rủi ro | `riskPercent <= maxRiskPercent` (đọc từ instrument profile) |
+| 2 | Checklist kỹ thuật | Mỗi item pass theo type |
+| 3 | Tính toán rủi ro | `riskPercent <= maxRiskPercent` (đọc từ checklist được chọn) |
 | 4 | Pre-Mortem | Input không rỗng |
-| 5 | Thực thi | Hiển thị summary (kèm instrument), nút copy + lưu nhật ký |
+| 5 | Thực thi | Summary + copy + lưu nhật ký |
+
+### Gate 0 — UI mới (1 bước, chọn cả instrument lẫn checklist)
+
+```
+[ EUR/USD ]  ←── click để chọn instrument
+  ├── Trade thường   (max 1%)   ○  ←── click để chọn checklist
+  └── Trade tin      (max 0.5%) ●  ←── đang chọn
+
+[ GBP/USD ]
+  └── Trade thường   (max 1%)   ○
+```
 
 ---
 
@@ -112,35 +214,42 @@ Store duy nhất quản lý toàn bộ flow:
 ```
 src/
   app/
-    page.tsx                 # Redirect vào /plan
+    page.tsx
     plan/
-      page.tsx               # Terminal chính — header, sidebar, gate content
+      page.tsx
     setup/
-      page.tsx               # Trang cấu hình quy tắc (Rulebook Editor)
+      page.tsx                 # Rulebook Editor — cần refactor cho multi-checklist
     log/
-      page.tsx               # Nhật ký giao dịch — danh sách plan đã lưu
+      page.tsx
     api/
-      plans/route.ts         # GET + POST plans.json
-      setup/route.ts         # GET + PUT setup.json
+      plans/route.ts           # GET + POST — per user
+      setup/route.ts           # GET + PUT — per user
+      auth/
+        login/route.ts         # POST — check users.json, set cookie, init user data
+        logout/route.ts        # POST — clear cookie
   components/
     gates/
-      Gate0Instrument.tsx    # Chọn instrument, load profile
-      Gate1Narrative.tsx     # Textarea bối cảnh + char count
-      Gate2Checklist.tsx     # Render rule theo type (checkbox/number/select)
-      Gate3RiskCalc.tsx      # Risk calculator, load equity từ setup
-      Gate4PreMortem.tsx     # Pre-mortem input
-      Gate5Execution.tsx     # Summary + copy + lưu nhật ký
+      Gate0Instrument.tsx      # Chọn instrument + checklist — cần refactor
+      Gate1Narrative.tsx
+      Gate2Checklist.tsx
+      Gate3RiskCalc.tsx        # Load maxRisk từ checklist — cần cập nhật
+      Gate4PreMortem.tsx
+      Gate5Execution.tsx
     layout/
-      GateProgress.tsx       # Sidebar: danh sách gate + progress bar
-      MentorBar.tsx          # Footer: avatar Brent + quote tiếng Việt
+      GateProgress.tsx
+      MentorBar.tsx
   store/
-    guardianStore.ts         # Zustand state machine (gate 0–5)
+    guardianStore.ts           # Thêm checklistId, checklistName — cần cập nhật
   data/
-    setup.json
-    plans.json
+    users.json
+    users/
+      <username>/
+        setup.json
+        plans.json
   lib/
-    validation.ts            # Validate từng gate, type ChecklistItem/ChecklistValue
-    fileStore.ts             # Helper đọc/ghi JSON
+    validation.ts
+    fileStore.ts               # readUserJSON, writeUserJSON, userFileExists
+  middleware.ts                # Inject x-username header
 ```
 
 ---
@@ -155,85 +264,19 @@ src/
 [ Footer: Avatar BD  |  Brent quote  |  Châm ngôn giao dịch       ]
 ```
 
-Theme: nền đen `#0d0d0d`, accent lime `#a3e635`.  
+Theme: nền đen `#0d0d0d`, accent lime `#a3e635`.
 Font: **Be Vietnam Pro** — subset `latin` + `vietnamese`, weight 400/500/600/700.
-
----
-
-## Trang /setup (Rulebook Editor)
-
-Cho phép cấu hình toàn bộ tham số mà không cần sửa file JSON tay:
-
-- **Sidebar instruments** — thêm/xóa instrument, click để chuyển profile
-- **Vốn tài khoản** — dùng chung cho tất cả instruments, lưu vào root `setup.json`
-- **Rủi ro tối đa/lệnh** — `maxRiskPercent` riêng mỗi instrument, Gate 3 đọc theo profile đang active
-- **Checklist Gate 2** — thêm/xóa rule, chọn type, cấu hình threshold/options — riêng mỗi instrument
-- Auto-save sau mỗi thao tác (PUT `/api/setup`), hiển thị trạng thái "ĐANG LƯU / ĐÃ LƯU ✓"
-
----
-
-## Progress
-
-### ✅ Done
-- [x] Khởi tạo Next.js 16 + Tailwind v4 + Zustand
-- [x] `guardianStore.ts` — state machine gates 0–5, `checklist` từ `boolean[]` → `(boolean|number|string)[]`
-- [x] `validation.ts` — validate theo type (checkbox/number/select), export `ChecklistItem`, `ChecklistValue`
-- [x] `fileStore.ts` — helper đọc/ghi JSON
-- [x] `setup.json` — schema multi-instrument: `equity` root + `instruments` map
-- [x] `api/plans` + `api/setup` — Route Handlers GET/POST/PUT
-- [x] `GateProgress.tsx` — sidebar nav + progress bar, hiển thị instrument badge
-- [x] `MentorBar.tsx` — footer Brent quotes (tiếng Việt)
-- [x] `Gate0Instrument.tsx` — chọn instrument, load profile (checklist + maxRisk + equity)
-- [x] `Gate1Narrative.tsx` — textarea + char count validation
-- [x] `Gate2Checklist.tsx` — render UI theo type rule (checkbox / number / select)
-- [x] `Gate3RiskCalc.tsx` — load equity + maxRisk từ instrument profile
-- [x] `Gate4PreMortem.tsx` — pre-mortem input
-- [x] `Gate5Execution.tsx` — summary (kèm instrument) + copy + lưu nhật ký
-- [x] `plan/page.tsx` — terminal layout chính, nav QUY TẮC / NHẬT KÝ
-- [x] `setup/page.tsx` — Rulebook Editor: sidebar instruments + edit profile từng cái
-- [x] `log/page.tsx` — nhật ký: danh sách accordion, filter, risk badge
-- [x] Việt hóa toàn bộ UI
-- [x] Font Be Vietnam Pro — hỗ trợ tiếng Việt toàn app
-- [x] CSS variables — contrast cải thiện (`--text-muted: #888`, `--border: #2e2e2e`)
-- [x] Multi-instrument profiles — mỗi instrument có checklist + maxRisk riêng
-
-### 🔜 Next
-- [ ] Test toàn bộ flow end-to-end
-- [ ] Responsive mobile (optional)
 
 ---
 
 ## Auth — Demo (JSON + cookie thủ công)
 
-> Mục tiêu: chặn truy cập trực tiếp, đủ dùng cho demo. Không cần DB, không cần thư viện auth.
-
-### Cơ chế
-
-- `users.json` — array `{ username, password }` plaintext, thêm/sửa tay
-- `POST /api/auth/login` — so khớp username + password, set cookie `tg_session=<username>`
-- `POST /api/auth/logout` — xóa cookie, reset store, redirect `/login`
-- `middleware.ts` — mọi request không có cookie `tg_session` → redirect `/login`
-- Không dùng JWT, không dùng NextAuth, không dùng DB
-
-### Cấu trúc thêm
-
-```
-src/
-  app/
-    login/
-      page.tsx               # Form đăng nhập
-    api/
-      auth/
-        login/route.ts       # POST — check users.json, set cookie
-        logout/route.ts      # POST — clear cookie
-  data/
-    users.json               # [{ username, password }] — sửa tay
-  middleware.ts              # Guard toàn bộ app trừ /login
-```
+- `users.json` — array `{ username, password }` plaintext
+- `POST /api/auth/login` — so khớp, set cookie `tg_session=<username>`, init user data nếu chưa có
+- `POST /api/auth/logout` — xóa cookie
+- `middleware.ts` — guard toàn app, inject `x-username` header vào mọi request đã auth
 
 ### Thêm user
-
-Sửa trực tiếp `src/data/users.json`:
 
 ```json
 [
@@ -242,4 +285,43 @@ Sửa trực tiếp `src/data/users.json`:
 ]
 ```
 
-> ⚠ Plaintext password — chỉ dùng cho demo nội bộ, không expose public.
+> ⚠ Plaintext password — chỉ dùng cho demo nội bộ.
+
+---
+
+## Progress
+
+### ✅ Done
+- [x] Khởi tạo Next.js 16 + Tailwind v4 + Zustand
+- [x] `guardianStore.ts` — state machine gates 0–5
+- [x] `validation.ts` — validate theo type (checkbox/number/select)
+- [x] `fileStore.ts` — `readJSON/writeJSON` (global) + `readUserJSON/writeUserJSON/userFileExists` (per-user)
+- [x] `middleware.ts` — guard + inject `x-username` header
+- [x] `api/setup` + `api/plans` — Route Handlers per-user (đọc từ `users/<username>/`)
+- [x] `api/auth/login` — init `setup.json` + `plans.json` cho user mới khi login
+- [x] `GateProgress.tsx`, `MentorBar.tsx`
+- [x] Gate 0–5 components (UI hoàn chỉnh, logic cũ)
+- [x] `plan/page.tsx`, `setup/page.tsx`, `log/page.tsx`
+- [x] Việt hóa toàn bộ UI, font Be Vietnam Pro
+- [x] Per-user data isolation (mỗi user có setup + plans riêng)
+
+### 🔜 Next — Refactor multi-checklist
+
+Thứ tự thực hiện:
+
+1. **`lib/validation.ts`** — thêm types mới: `Checklist`, `InstrumentWithChecklists`
+2. **`store/guardianStore.ts`** — thêm `checklistId`, `checklistName` vào `planData`; cập nhật `canAdvance` Gate 0
+3. **`app/api/setup/route.ts`** — cập nhật type `Setup` + `InstrumentProfile` theo schema mới
+4. **`components/gates/Gate0Instrument.tsx`** — UI chọn instrument → expand checklists → chọn 1 checklist
+5. **`components/gates/Gate3RiskCalc.tsx`** — load `maxRiskPercent` từ checklist đang chọn (qua store) thay vì instrument
+6. **`app/setup/page.tsx`** — refactor Rulebook Editor: sidebar instrument → click → hiện danh sách checklists → edit từng checklist
+7. **Migrate `setup.json`** — convert schema cũ sang mới cho user hiện tại
+8. **Test end-to-end** toàn bộ flow
+
+---
+
+## Mở rộng (Roadmap)
+
+- [ ] SQLite / Turso khi cần multi-user thật sự
+- [ ] Responsive mobile
+- [ ] Export nhật ký ra CSV/PDF

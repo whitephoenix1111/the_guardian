@@ -1,34 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useGuardianStore } from "@/store/guardianStore";
 import { validateGate2, ChecklistItem, ChecklistValue } from "@/lib/validation";
 
 export default function Gate2Checklist() {
   const { planData, setPlanData, advance, goBack } = useGuardianStore();
-  const [items, setItems] = useState<ChecklistItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  // checklistItems đã được Gate0 lưu vào store — dùng thẳng, không cần fetch
+  const items = planData.checklistItems;
 
+  // Sync checklist values nếu length lệch (vd: lần đầu vào gate)
   useEffect(() => {
-    fetch("/api/setup")
-      .then((r) => r.json())
-      .then((data) => {
-        const checklist: ChecklistItem[] = data.checklist || [];
-        setItems(checklist);
-        if (planData.checklist.length !== checklist.length) {
-          setPlanData({
-            checklistItems: checklist,
-            checklist: checklist.map((item) => {
-              if (item.type === "checkbox") return false;
-              return "";
-            }),
-          });
-        } else {
-          setPlanData({ checklistItems: checklist });
-        }
-        setLoading(false);
+    if (planData.checklist.length !== items.length) {
+      setPlanData({
+        checklist: items.map((item) => item.type === "checkbox" ? false : ""),
       });
-  }, []);
+    }
+  }, [items.length]);
 
   const setValue = (index: number, val: ChecklistValue) => {
     const updated = [...planData.checklist];
@@ -39,7 +27,11 @@ export default function Gate2Checklist() {
   const isValid = validateGate2(planData.checklist, items);
   const passCount = items.filter((item, i) => itemPasses(item, planData.checklist[i])).length;
 
-  if (loading) return <p style={{ color: "var(--text-muted)", fontSize: "13px" }}>Đang tải checklist...</p>;
+  if (!items.length) return (
+    <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>
+      Checklist trống. <a href="/setup" style={{ color: "var(--lime)", textDecoration: "none" }}>Vào QUY TẮC để thêm quy tắc.</a>
+    </div>
+  );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>

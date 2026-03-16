@@ -2,8 +2,15 @@
   "equity": 10000,
   "instruments": {
     "USD/JPY": {
-      "maxRiskPercent": 1,
-      "checklist": []
+      "id": "USD/JPY",
+      "checklists": [
+        {
+          "id": "USD/JPY-default",
+          "name": "Trade thường",
+          "maxRiskPercent": 1,
+          "items": []
+        }
+      ]
     }
   }
 }

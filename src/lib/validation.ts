@@ -13,6 +13,22 @@ export interface ChecklistItem {
 
 export type ChecklistValue = boolean | number | string;
 
+// ── Multi-checklist types ─────────────────────────────────────────────────
+
+export interface Checklist {
+  id: string;
+  name: string;
+  maxUsd: number;
+  items: ChecklistItem[];
+}
+
+export interface InstrumentWithChecklists {
+  id: string;
+  checklists: Checklist[];
+}
+
+// ── Gate validators ───────────────────────────────────────────────────────
+
 export function validateGate1(narrative: string): boolean {
   return narrative.trim().length >= 100;
 }

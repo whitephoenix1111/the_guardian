@@ -1,0 +1,95 @@
+{
+  "equity": 5000,
+  "instruments": {
+    "AUD/USD": {
+      "id": "AUD/USD",
+      "checklists": [
+        {
+          "id": "AUD/USD-1773636461273",
+          "name": "Trade thường phiên Á",
+          "maxRiskPercent": 1,
+          "items": [
+            {
+              "label": "10h chưa mà đòi trade?",
+              "type": "checkbox",
+              "id": "1773636980278"
+            },
+            {
+              "label": "Nếu AU đồng thuận với HK50, sẽ đi theo xu hướng đó. Nếu AU không tăng dù HK50 tăng mạnh, sẽ chuẩn bị cho một lệnh bán.",
+              "type": "select",
+              "options": [
+                "Đi theo hướng HK50.",
+                "Đánh ngược lại HK50."
+              ],
+              "id": "1773637494698"
+            }
+          ],
+          "maxUsd": 10
+        },
+        {
+          "id": "AUD/USD-1773637810634",
+          "name": "Trade thường phiên Âu",
+          "maxRiskPercent": 1,
+          "items": [
+            {
+              "label": "Đã 15h chưa mà đòi trade?",
+              "type": "checkbox",
+              "id": "1773637862803"
+            },
+            {
+              "label": "Nếu giá AU quét qua đỉnh phiên Á rồi nhanh chóng rút chân lại, sẽ đánh ngược về vùng giá trung tâm (Mean Reversion).",
+              "type": "select",
+              "options": [
+                "Chưa quét qua đỉnh phiên Á.",
+                "Đã quét đỉnh phiên Á."
+              ],
+              "id": "1773637926948"
+            }
+          ],
+          "maxUsd": 10
+        },
+        {
+          "id": "AUD/USD-1773637952461",
+          "name": "Trade tin sáng.",
+          "maxRiskPercent": 0.1,
+          "items": [
+            {
+              "label": "Có phải tin CPI, NFP, Lãi suất, RBA, GDP, PMI, ISM?",
+              "type": "checkbox",
+              "id": "1773638324542"
+            },
+            {
+              "label": "Kẻ newspivot.",
+              "type": "checkbox",
+              "id": "1773638030607"
+            },
+            {
+              "label": "Đợi 15p từ khi tin ra.",
+              "type": "checkbox",
+              "id": "1773638521963"
+            },
+            {
+              "label": "CPI, NFP, LÃI SUẤT, RBA đánh chuẩn vốn/lệnh. Tin GDP, PMI, ISM đánh 1/2 vốn/lệnh.",
+              "type": "select",
+              "options": [
+                "CPI, NFP, RBA",
+                "GDP, PMI, ISM"
+              ],
+              "id": "1773638970669"
+            },
+            {
+              "label": "Tính ATR ngày.",
+              "type": "checkbox",
+              "id": "1773639018262"
+            }
+          ],
+          "maxUsd": 10
+        }
+      ]
+    },
+    "EUR/USD": {
+      "id": "EUR/USD",
+      "checklists": []
+    }
+  }
+}

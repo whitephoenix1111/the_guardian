@@ -1,0 +1,59 @@
+[
+  {
+    "id": "1773639266852",
+    "createdAt": "2026-03-16T05:34:26.852Z",
+    "status": "APPROVED",
+    "data": {
+      "instrument": "AUD/USD",
+      "checklistId": "AUD/USD-1773637952461",
+      "checklistName": "Trade tin sáng.",
+      "narrative": "",
+      "checklist": [
+        true,
+        true,
+        true,
+        "GDP, PMI, ISM",
+        true
+      ],
+      "checklistItems": [
+        {
+          "label": "Có phải tin CPI, NFP, Lãi suất, RBA, GDP, PMI, ISM?",
+          "type": "checkbox",
+          "id": "1773638324542"
+        },
+        {
+          "label": "Kẻ newspivot.",
+          "type": "checkbox",
+          "id": "1773638030607"
+        },
+        {
+          "label": "Đợi 15p từ khi tin ra.",
+          "type": "checkbox",
+          "id": "1773638521963"
+        },
+        {
+          "label": "CPI, NFP, LÃI SUẤT, RBA đánh chuẩn vốn/lệnh. Tin GDP, PMI, ISM đánh 1/2 vốn/lệnh.",
+          "type": "select",
+          "options": [
+            "CPI, NFP, RBA",
+            "GDP, PMI, ISM"
+          ],
+          "id": "1773638970669"
+        },
+        {
+          "label": "Tính ATR ngày.",
+          "type": "checkbox",
+          "id": "1773639018262"
+        }
+      ],
+      "maxUsd": 10,
+      "risk": {
+        "entry": 0,
+        "stop": 0,
+        "equity": 5000,
+        "riskPercent": 0
+      },
+      "preMortem": ""
+    }
+  }
+]

@@ -4,10 +4,8 @@ import { useGuardianStore } from "@/store/guardianStore";
 
 const GATE_LABELS = [
   { id: 0, label: "Instrument" },
-  { id: 1, label: "Bối cảnh" },
   { id: 2, label: "Checklist" },
-  { id: 3, label: "Rủi ro" },
-  { id: 4, label: "Pre-Mortem" },
+  { id: 3, label: "Giới hạn vốn" },
   { id: 5, label: "Thực thi" },
 ];
 
@@ -20,8 +18,8 @@ const STATUS_ICON: Record<string, string> = {
 export default function GateProgress() {
   const { currentGate, gateStatus, planData } = useGuardianStore();
   // Progress: gates 1–5 only (gate 0 is pre-flight)
-  const doneCount = [1, 2, 3, 4, 5].filter((g) => gateStatus[g] === "done").length;
-  const percent = Math.round((doneCount / 5) * 100);
+  const doneCount = [2, 3, 5].filter((g) => gateStatus[g] === "done").length;
+  const percent = Math.round((doneCount / 3) * 100);
 
   return (
     <aside style={{
@@ -85,7 +83,7 @@ export default function GateProgress() {
               {STATUS_ICON[status]}
             </span>
             <span style={{ fontSize: "12px", color: isActive ? "var(--text)" : "var(--text-muted)" }}>
-              {isGate0 ? gate.label : `${gate.id}. ${gate.label}`}
+              {isGate0 ? gate.label : `${gate.label}`}
             </span>
           </div>
         );

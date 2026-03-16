@@ -11,19 +11,13 @@ export default function Gate5Execution() {
 
   const executionCode = [
     `=== THE GUARDIAN — LỆNH ĐƯỢC DUYỆT ===`,
-    `Thời gian : ${new Date().toLocaleString("vi-VN")}`,
-    `Instrument: ${planData.instrument}`,
+    `Thời gian  : ${new Date().toLocaleString("vi-VN")}`,
+    `Instrument : ${planData.instrument}`,
+    `Checklist  : ${planData.checklistName || "—"}`,
+    `Giới hạn   : ${planData.maxUsd.toLocaleString("en-US")} USD`,
     ``,
-    `[BỐI CẢNH]`,
-    planData.narrative,
-    ``,
-    `[RỦI RO]`,
-    `Vào lệnh : ${planData.risk.entry}`,
-    `Stoploss  : ${planData.risk.stop}`,
-    `Rủi ro   : ${planData.risk.riskPercent.toFixed(2)}%`,
-    ``,
-    `[PRE-MORTEM]`,
-    planData.preMortem,
+    `[CHECKLIST] ${planData.checklistItems.length} quy tắc — TẤT CẢ ĐÃ PASS`,
+    ...planData.checklistItems.map((item, i) => `  ✓ ${item.label}`),
     ``,
     `[TRẠNG THÁI] ĐÃ DUYỆT — Thực thi với sự tự tin.`,
   ].join("\n");
@@ -43,7 +37,13 @@ export default function Gate5Execution() {
         id: Date.now().toString(),
         createdAt: new Date().toISOString(),
         status: "APPROVED",
-        data: planData,
+        data: {
+          instrument: planData.instrument,
+          checklistId: planData.checklistId,
+          checklistName: planData.checklistName,
+          maxUsd: planData.maxUsd,
+          checklistItems: planData.checklistItems,
+        },
       }),
     });
     setSaving(false);
